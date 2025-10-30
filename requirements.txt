@@ -1,0 +1,3 @@
+requests>=2.31.0
+numpy>=1.24.0
+anthropic>=0.39.0  # For Claude API deep analysis (optional)
