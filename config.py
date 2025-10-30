@@ -1,19 +1,33 @@
 """
 Configuration for Stock Analysis System v4.0
-Updated scoring dimensions with advanced technical indicators
+Updated with secure API key management via .env file
 """
 
+import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 # ============================================================================
-# API CONFIGURATION
+# API CONFIGURATION - Loaded from .env file
 # ============================================================================
 
 # Financial Modeling Prep API Key
 # Get your free key at: https://financialmodelingprep.com/developer/docs/
-FMP_API_KEY = "w4Fs93trTWbGi2aNzdZm3EVr4gBJcqhI"
+FMP_API_KEY = os.getenv('FMP_API_KEY', 'YOUR_FMP_API_KEY_HERE')
 
 # Polygon.io API Key (for options data)
 # Get your key at: https://polygon.io/dashboard/api-keys
-POLYGON_API_KEY = "Xku4p8y1mcyRiuZdIiUTmM5_p62FretY"
+POLYGON_API_KEY = os.getenv('POLYGON_API_KEY', 'YOUR_POLYGON_API_KEY_HERE')
+
+# FinViz Elite API Token
+# Get from: https://elite.finviz.com/export.ashx
+FINVIZ_API_TOKEN = os.getenv('FINVIZ_API_TOKEN', 'YOUR_FINVIZ_TOKEN_HERE')
+
+# Claude API Key (optional - for AI deep analysis)
+# Get from: https://console.anthropic.com/
+CLAUDE_API_KEY = os.getenv('CLAUDE_API_KEY', 'YOUR_CLAUDE_API_KEY_HERE')
 
 # API Rate Limiting
 FMP_RATE_LIMIT = {
@@ -322,13 +336,13 @@ def validate_config():
             assert abs(sub_total - 1.0) < 0.001, f"{key} metrics weights must sum to 1.0, got {sub_total}"
     
     # Check API key is set
-    assert FMP_API_KEY != "YOUR_FMP_API_KEY_HERE", "Please set your FMP API key"
+    assert FMP_API_KEY != "YOUR_FMP_API_KEY_HERE", "Please set your FMP API key in .env file"
     
     # Check Polygon API key if options enabled
     if config['options']['enabled']:
         if POLYGON_API_KEY == "YOUR_POLYGON_API_KEY_HERE":
             print("⚠️  Warning: Options enabled but Polygon API key not set")
-            print("   Set POLYGON_API_KEY in config.py to enable options data")
+            print("   Set POLYGON_API_KEY in your .env file to enable options data")
     
     print("✅ Configuration validated successfully")
     print(f"✅ Total scoring dimensions: {len(weights)}")

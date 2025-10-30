@@ -1,11 +1,19 @@
 """
 Simple FinViz Elite Screener Ticker Fetcher
 Uses FinViz's built-in CSV export API
+Updated with secure API token management via .env file
 """
 
 import requests
 import csv
 from io import StringIO
+import os
+import sys
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
+
 
 def fetch_finviz_tickers(screener_url: str, api_token: str) -> list:
     """
@@ -61,14 +69,21 @@ def save_tickers(tickers: list, output_file: str = "input_tickers.txt"):
 
 
 if __name__ == "__main__":
-    import sys
+    # Load API token from environment variable
+    API_TOKEN = os.getenv('FINVIZ_API_TOKEN', 'YOUR_FINVIZ_TOKEN_HERE')
+    
+    # Check if token is set
+    if API_TOKEN == 'YOUR_FINVIZ_TOKEN_HERE':
+        print("❌ ERROR: FinViz API token not set!")
+        print("   Please set FINVIZ_API_TOKEN in your .env file")
+        print("\n💡 Steps to fix:")
+        print("   1. Create a .env file in your project root")
+        print("   2. Add this line: FINVIZ_API_TOKEN=your_token_here")
+        print("   3. Get your token from: https://elite.finviz.com/export.ashx")
+        sys.exit(1)
     
     # YOUR CONFIGURATION
     SCREENER_URL = "https://elite.finviz.com/screener.ashx?v=141&f=cap_microover,fa_debteq_u1,fa_epsyoy_pos,fa_epsyoy1_pos,fa_roe_o10,geo_usa,sh_avgvol_o500,sh_price_o5,ta_beta_o1,ta_sma20_sa50,ta_sma50_pa&ft=4&o=-relativevolume"
-    
-    # Get your API token from: https://elite.finviz.com/export.ashx
-    # Click "Regenerate Token" if needed
-    API_TOKEN = "6a8f4866-8965-4c9e-b941-f56c97379554"  # Replace with your actual token
     
     # Allow command line arguments for flexibility
     # Usage: python finviz_scraper.py [custom_url] [output_file]
@@ -84,11 +99,10 @@ if __name__ == "__main__":
     
     if tickers:
         save_tickers(tickers, output_file)
-        print(f"\n✅ Ready to analyze! Run: python main.py {output_file}")
+        print(f"\n✅ Ready to analyze! Run: python main_with_claude_enhanced.py {output_file}")
     else:
         print("\n❌ No tickers found. Check your token and URL.")
         print("\n💡 Make sure to:")
-        print("   1. Set your API_TOKEN in the script")
+        print("   1. Set your FINVIZ_API_TOKEN in the .env file")
         print("   2. Verify your screener URL is correct")
         print("   3. Check you're logged into FinViz Elite")
-    
