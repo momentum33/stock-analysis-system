@@ -115,8 +115,8 @@ class DataClient:
     
     def get_news(self, symbol: str, limit: int = 5) -> Optional[List[Dict]]:
         """Get recent news from FMP"""
-        data = self._make_fmp_request(f"stock_news", 
-                                      params={'tickers': symbol, 'limit': limit})
+        data = self._make_fmp_request("news/stock", 
+                              params={'symbols': symbol, 'limit': limit})
         return data if data and isinstance(data, list) else []
     
     # ========================================================================
