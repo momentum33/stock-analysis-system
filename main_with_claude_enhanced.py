@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Stock Analysis System with Claude Deep Analysis - Main Script
 Now with Data Collection
@@ -13,7 +13,7 @@ import os
 from datetime import datetime
 from typing import List
 import config
-from fmp_client import FMPClient
+from fmp_client import DataClient
 from analyzer import StockAnalyzer
 from report_generator import ReportGenerator
 from data_collector import DataCollector
@@ -45,21 +45,21 @@ def main():
     
     # Check for API key
     if config.FMP_API_KEY == "YOUR_FMP_API_KEY_HERE":
-        print("❌ ERROR: Please set your FMP API key in config.py")
+        print("âŒ ERROR: Please set your FMP API key in config.py")
         return
     
     # Initialize data collector
-    print("📊 Initializing data collection system...")
+    print("ðŸ“Š Initializing data collection system...")
     data_collector = DataCollector()
     
     # Check for deep analysis flag
     enable_deep_analysis = "--deep-analysis" in sys.argv or config.ENABLE_DEEP_ANALYSIS
     
     if enable_deep_analysis:
-        print("🤖 DEEP ANALYSIS MODE ENABLED (Using Claude API)")
+        print("ðŸ¤– DEEP ANALYSIS MODE ENABLED (Using Claude API)")
         
         if config.CLAUDE_API_KEY == "YOUR_CLAUDE_API_KEY_HERE":
-            print("❌ ERROR: Please set your Claude API key in config.py for deep analysis")
+            print("âŒ ERROR: Please set your Claude API key in config.py for deep analysis")
             print("   Get your API key from: https://console.anthropic.com/")
             return
         
@@ -70,14 +70,14 @@ def main():
                 api_key=config.CLAUDE_API_KEY,
                 model=config.CLAUDE_MODEL
             )
-            print(f"✅ Claude API initialized (Model: {config.CLAUDE_MODEL})")
-            print(f"✅ Will analyze top stocks deeply with options strategies\n")
+            print(f"âœ… Claude API initialized (Model: {config.CLAUDE_MODEL})")
+            print(f"âœ… Will analyze top stocks deeply with options strategies\n")
         except ImportError:
-            print("❌ ERROR: anthropic package not installed")
+            print("âŒ ERROR: anthropic package not installed")
             print("   Install with: pip install anthropic")
             return
         except Exception as e:
-            print(f"❌ ERROR initializing Claude API: {e}")
+            print(f"âŒ ERROR initializing Claude API: {e}")
             return
     
     # Get input file
@@ -91,7 +91,7 @@ def main():
         
         default_file = "input_tickers.txt"
         if os.path.exists(default_file):
-            print(f"\n✅ Found {default_file}, using that as input")
+            print(f"\nâœ… Found {default_file}, using that as input")
             input_file = default_file
         else:
             return
@@ -103,14 +103,14 @@ def main():
     tickers = read_tickers_from_file(input_file)
     
     if not tickers:
-        print("❌ No valid tickers found in input file")
+        print("âŒ No valid tickers found in input file")
         return
     
-    print(f"✅ Found {len(tickers)} tickers to analyze\n")
+    print(f"âœ… Found {len(tickers)} tickers to analyze\n")
     
     # Initialize components
     print("Initializing FMP API client...")
-    client = FMPClient(config.FMP_API_KEY)
+    client = DataClient()
     
     # Initialize Polygon client if API key is set
     polygon_client = None
@@ -118,21 +118,21 @@ def main():
         print("Initializing Polygon.io API client for options and short interest...")
         from polygon_client import PolygonClient
         polygon_client = PolygonClient(config.POLYGON_API_KEY)
-        print("✅ Polygon.io client initialized (Options & Short Interest enabled)")
+        print("âœ… Polygon.io client initialized (Options & Short Interest enabled)")
     else:
-        print("⚠️ Polygon API key not set - skipping options and enhanced short interest")
+        print("âš ï¸ Polygon API key not set - skipping options and enhanced short interest")
     
     print("Initializing stock analyzer...")
-    analyzer = StockAnalyzer(client, polygon_client)
+    analyzer = StockAnalyzer()
     
     print("Fetching market baseline (SPY)...")
     spy_data = analyzer.fetch_market_baseline()
     if not spy_data:
-        print("⚠ Warning: Could not fetch market baseline")
+        print("âš  Warning: Could not fetch market baseline")
         spy_price = None
         spy_change = None
     else:
-        print("✅ Market baseline loaded")
+        print("âœ… Market baseline loaded")
         spy_price = spy_data.get('price')
         spy_change = spy_data.get('metrics', {}).get('day_change_pct')
         print(f"   SPY: ${spy_price:.2f} ({spy_change:+.2f}%)\n")
@@ -145,7 +145,7 @@ def main():
         spy_change=spy_change,
         notes=f"Analysis from {input_file}"
     )
-    print(f"📝 Started data collection run #{run_id}\n")
+    print(f"ðŸ“ Started data collection run #{run_id}\n")
     
     # Analyze stocks
     print("=" * 80)
@@ -167,7 +167,7 @@ def main():
     print("=" * 80 + "\n")
     
     if not results:
-        print("❌ No stocks passed the analysis filters")
+        print("âŒ No stocks passed the analysis filters")
         return
     
     # Update run with passed count
@@ -215,10 +215,10 @@ def main():
             recommendation = claude_analysis.get('recommendation', {})
             options = claude_analysis.get('options_strategies', {})
             
-            print(f"  ✅ Sentiment: {sentiment.get('label', 'Unknown')} ({sentiment.get('score', 0):.1f}/10)")
-            print(f"  ✅ Recommendation: {recommendation.get('recommendation', 'Unknown')} (Confidence: {recommendation.get('confidence', 'Unknown')})")
+            print(f"  âœ… Sentiment: {sentiment.get('label', 'Unknown')} ({sentiment.get('score', 0):.1f}/10)")
+            print(f"  âœ… Recommendation: {recommendation.get('recommendation', 'Unknown')} (Confidence: {recommendation.get('confidence', 'Unknown')})")
             if options and options.get('strategies'):
-                print(f"  📈 Options Strategies: {len(options['strategies'])} strategies generated")
+                print(f"  ðŸ“ˆ Options Strategies: {len(options['strategies'])} strategies generated")
             print()
         
         # Comparative ranking
@@ -228,7 +228,7 @@ def main():
         
         comparative_analysis = claude_analyzer.comparative_ranking(deep_analysis_stocks)
         
-        print("\n🏆 Claude's Top Picks:")
+        print("\nðŸ† Claude's Top Picks:")
         for pick in comparative_analysis.get('top_5', [])[:5]:
             print(f"\n#{pick['rank']}. {pick['symbol']}")
             print(f"   Reason: {pick['reason']}")
@@ -238,11 +238,11 @@ def main():
                 print(f"   Entry: {pick['entry_timing']}")
         
         if comparative_analysis.get('avoid'):
-            print("\n⚠️ Stocks to Avoid:")
+            print("\nâš ï¸ Stocks to Avoid:")
             for stock in comparative_analysis.get('avoid', []):
-                print(f"   • {stock['symbol']}: {stock['reason']}")
+                print(f"   â€¢ {stock['symbol']}: {stock['reason']}")
         
-        print(f"\n📊 Market Outlook: {comparative_analysis.get('market_outlook', 'N/A')}")
+        print(f"\nðŸ“Š Market Outlook: {comparative_analysis.get('market_outlook', 'N/A')}")
         
         # Store comparative analysis
         for stock in deep_analysis_stocks:
@@ -267,24 +267,24 @@ def main():
                 comparative_analysis
             )
         except ImportError:
-            print("⚠ Using standard reports (claude_report_generator not found)")
+            print("âš  Using standard reports (claude_report_generator not found)")
             report_paths = report_gen.generate_all_reports(top_stocks, len(tickers))
     else:
         report_paths = report_gen.generate_all_reports(top_stocks, len(tickers))
     
     # Summary
     print("\n" + "=" * 80)
-    print("✅ ANALYSIS COMPLETE!")
+    print("âœ… ANALYSIS COMPLETE!")
     print("=" * 80)
     print(f"\nReports generated in: {report_gen.output_dir}/")
-    print(f"  • CSV:       {os.path.basename(report_paths['csv'])}")
-    print(f"  • Dashboard: {os.path.basename(report_paths['html'])}")
-    print(f"  • Report:    {os.path.basename(report_paths['pdf'])}")
+    print(f"  â€¢ CSV:       {os.path.basename(report_paths['csv'])}")
+    print(f"  â€¢ Dashboard: {os.path.basename(report_paths['html'])}")
+    print(f"  â€¢ Report:    {os.path.basename(report_paths['pdf'])}")
     print(f"\nCompleted: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Data collection summary
     print("\n" + "=" * 80)
-    print("📊 DATA COLLECTION SUMMARY")
+    print("ðŸ“Š DATA COLLECTION SUMMARY")
     print("=" * 80)
     print(f"Run ID: #{run_id}")
     print(f"Stocks Analyzed: {len(results)}")
@@ -308,19 +308,19 @@ def main():
     # Enhanced summary with Claude
     if enable_deep_analysis and comparative_analysis.get('top_pick_summary'):
         print("\n" + "=" * 80)
-        print("🤖 CLAUDE'S RECOMMENDATION")
+        print("ðŸ¤– CLAUDE'S RECOMMENDATION")
         print("=" * 80)
         print(f"\n{comparative_analysis['top_pick_summary']}")
     
-    print("\n✨ Ready for your trading day!")
+    print("\nâœ¨ Ready for your trading day!")
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⚠ Analysis interrupted by user")
+        print("\n\nâš  Analysis interrupted by user")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nâŒ Error: {e}")
         import traceback
         traceback.print_exc()

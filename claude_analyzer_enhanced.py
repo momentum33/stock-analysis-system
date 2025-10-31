@@ -366,31 +366,85 @@ Return ONLY valid JSON:
             return {'risks': [], 'overall_risk_score': 5, 'risk_label': 'Unknown', 'summary': f'Error: {str(e)}'}
     
     def _generate_options_strategies(self, context: str, stock_data: Dict, analyses: Dict) -> Dict:
-        """NEW: Generate specific options trade ideas"""
+        """Generate options strategies using PROVEN SHORT-TERM methodology: Debit spreads over naked calls"""
         
         options = stock_data.get('options_analysis', {})
         sentiment = analyses.get('sentiment', {})
         catalysts = analyses.get('catalysts', {})
         risks = analyses.get('risks', {})
         
-        # Build options-specific context
+        # Calculate key metrics
+        price = stock_data.get('price', 0)
+        put_call = options.get('put_call_ratio', 'N/A')
+        atm_iv = options.get('atm_implied_volatility', 'N/A')
+        if isinstance(atm_iv, (int, float)):
+            iv_pct = atm_iv * 100 if atm_iv < 1 else atm_iv
+        else:
+            iv_pct = 'N/A'
+        
+        total_vol = options.get('total_call_volume', 0) + options.get('total_put_volume', 0)
+        
+        # Interpret the data
+        pc_signal = "NEUTRAL"
+        direction_rec = "NEUTRAL"
+        if isinstance(put_call, (int, float)):
+            if put_call < 0.7:
+                pc_signal = "VERY BULLISH (heavy call buying)"
+                direction_rec = "BULLISH - Recommend debit call spreads"
+            elif put_call < 0.85:
+                pc_signal = "MODERATELY BULLISH"
+                direction_rec = "BULLISH - Recommend debit call spreads"
+            elif put_call < 1.0:
+                pc_signal = "SLIGHTLY BULLISH"
+                direction_rec = "BULLISH - Recommend debit call spreads"
+            elif put_call < 1.2:
+                pc_signal = "NEUTRAL"
+                direction_rec = "NEUTRAL - Consider iron condors or avoid"
+            elif put_call < 1.5:
+                pc_signal = "SLIGHTLY BEARISH"
+                direction_rec = "BEARISH - Recommend debit put spreads"
+            else:
+                pc_signal = "VERY BEARISH (heavy put buying)"
+                direction_rec = "BEARISH - Recommend debit put spreads"
+        else:
+            direction_rec = "UNKNOWN - Default to debit call spreads if bullish thesis"
+        
+        iv_signal = "NORMAL"
+        if isinstance(iv_pct, (int, float)):
+            if iv_pct > 50:
+                iv_signal = "ELEVATED (still ok for spreads)"
+            elif iv_pct >= 20:
+                iv_signal = "NORMAL RANGE (ideal for buying spreads)"
+            else:
+                iv_signal = "LOW (cheap options, good for buying)"
+        
+        liquidity_signal = "LIQUID" if total_vol > 1000 else "LOW" if total_vol < 100 else "MODERATE"
+        
+        # Build enhanced options context
         options_context = f"""
-OPTIONS METRICS:
-- Put/Call Ratio: {options.get('put_call_ratio', 'N/A')}
-- ATM Implied Volatility: {options.get('atm_implied_volatility', 'N/A')}
-- Total Volume: {options.get('total_call_volume', 0) + options.get('total_put_volume', 0):,}
-- Call Volume: {options.get('total_call_volume', 0):,}
-- Put Volume: {options.get('total_put_volume', 0):,}
-- Net Delta: {options.get('net_delta', 'N/A')}
-- Available Expirations: {', '.join(options.get('near_term_expirations', [])[:5])}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OPTIONS MARKET DATA - {stock_data.get('symbol')} at ${price:.2f}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ANALYSIS SCORES:
+PUT/CALL RATIO: {put_call} → {pc_signal}
+→ {direction_rec}
+
+IMPLIED VOLATILITY: {iv_pct}{'%' if isinstance(iv_pct, (int, float)) else ''} → {iv_signal}
+
+OPTIONS VOLUME: {total_vol:,} ({liquidity_signal})
+
+AVAILABLE EXPIRATIONS: {', '.join(options.get('near_term_expirations', [])[:5])}
+
+FUNDAMENTAL CONTEXT:
 - Sentiment: {sentiment.get('score', 5)}/10 ({sentiment.get('label', 'Unknown')})
-- Catalyst: {catalysts.get('catalyst_score', 5)}/10
-- Risk: {risks.get('overall_risk_score', 5)}/10 ({risks.get('risk_label', 'Unknown')})
+- Upcoming Catalysts: {', '.join(catalysts.get('upcoming', ['None'])[:3])}
+- Risk Level: {risks.get('overall_risk_score', 5)}/10
 """
         
-        prompt = f"""<task>Generate SPECIFIC options trade ideas for short-term trading (2-8 weeks)</task>
+        spread_type = "Debit CALL spread" if "BULLISH" in direction_rec else "Debit PUT spread" if "BEARISH" in direction_rec else "Debit CALL spread"
+        width_suggestion = "$5 width" if price > 100 else "$2.50 width" if price > 50 else "$1 width"
+        
+        prompt = f"""You are an expert options trader specializing in SHORT-TERM (2-8 week) strategies.
 
 <context>
 {context}
@@ -398,68 +452,138 @@ ANALYSIS SCORES:
 {options_context}
 </context>
 
-<instructions>
-Provide 2-3 SPECIFIC options strategies ranked by preference.
+<trading_methodology>
+**CRITICAL: TIME HORIZON DETERMINES STRATEGY**
 
-For EACH strategy provide:
-1. Strategy Name: e.g., "Call Debit Spread", "Put Credit Spread", "Long Call", "Iron Condor"
-2. Strikes: SPECIFIC strikes (e.g., "Buy 150 call, sell 155 call")
-3. Expiration: SPECIFIC date from available expirations
-4. Direction: bullish | bearish | neutral | volatility
-5. Rationale: WHY this strategy fits (2-3 sentences, reference sentiment/catalysts/IV)
-6. Max Risk: Dollar amount or percentage
-7. Max Reward: Dollar amount or percentage  
-8. Breakeven: Price level
-9. Win Probability: <rough estimate>
-10. Best Case: What needs to happen
-11. Risk Factors: Key risks to this trade
+For 2-8 WEEK plays → DEBIT SPREADS (our timeframe)
+For 6+ MONTHS → LEAPS
+For INTRADAY → Naked calls/puts
 
-Strategy Selection Guidelines:
-- High IV (>40%): Consider credit spreads, iron condors, selling premium
-- Low IV (<25%): Consider debit spreads, long calls/puts, buying premium
-- High conviction + catalyst: Debit spreads or outright calls/puts
-- Neutral/range-bound: Iron condors, strangles
-- Bullish P/C ratio (<0.7): Calls or call spreads
-- Bearish P/C ratio (>1.3): Puts or put spreads
-- Near catalyst: Closer expiration, directional
-- No clear catalyst: Further expiration, spreads
+**WHY DEBIT SPREADS BEAT NAKED CALLS FOR 2-8 WEEKS (5 REASONS):**
 
-IMPORTANT: 
-- Use expirations that align with catalyst timing
-- If major catalyst in 3 weeks, use 4-5 week expiration
-- Match strategy aggression to conviction level
-- Consider liquidity (volume should be >100 for each leg)
-</instructions>
+1. LOWER BREAKEVEN
+   - Selling higher strike reduces cost
+   - Breakeven closer to current price = higher win probability
+   - Stock at $100: Buy $100 call ($5) + Sell $105 call ($2) = $3 net
+   - Breakeven $103 vs $105 for naked call
+
+2. BETTER RISK/REWARD
+   - Short call offsets theta decay on long call
+   - Time decay is ENEMY of naked calls (needs fast move)
+   - Time decay is NEUTRAL on spreads (both legs decay together)
+
+3. THETA PROTECTION
+   - Long calls lose value fast if stock doesn't pump
+   - Brutal in last 30 days before expiration
+   - Short call offsets this decay
+   - Trade-off: Capped profit (but worth it)
+
+4. DEFINED RISK, NO STOPS NEEDED
+   - Max loss = net debit paid
+   - Don't need "sniper entries" like futures
+   - Can't get wicked out
+   - More forgiving timing
+
+5. SMALLER MOVES = PROFIT
+   - Naked call needs BIG move to beat theta
+   - Spread profits from moderate moves
+   - More realistic targets for 2-8 weeks
+
+</trading_methodology>
+
+<task>
+Based on {pc_signal} P/C ratio and {iv_signal} IV:
+
+Generate 3 DEBIT SPREAD strategies for {stock_data.get('symbol')} at ${price:.2f}:
+
+Strategy #1 - PRIMARY (Highest conviction, standard width):
+- Structure: {spread_type}
+- Strikes: Buy [ATM or slight OTM] / Sell [1-2 strikes higher/lower]
+  * Spread width typically $2.50-$10 depending on stock price
+  * For ${price:.2f}, suggest {width_suggestion}
+- Expiration: 3-6 weeks from {', '.join(options.get('near_term_expirations', [])[:3])}
+- Calculate:
+  * Net debit (estimate ~40-60% of spread width)
+  * Max risk = net debit × 100
+  * Max profit = (spread width - net debit) × 100
+  * Breakeven = long strike + net debit (for calls)
+  * R:R ratio = max profit / max risk
+  * Required move % from ${price:.2f}
+- Rationale: MUST explain why debit spread > naked call for this timeframe
+
+Strategy #2 - AGGRESSIVE (Wider spread or further OTM):
+- Wider strikes for more profit potential
+- OR slightly further OTM for lower cost
+- Still a DEBIT SPREAD
+
+Strategy #3 - CONSERVATIVE (Tighter spread OR longer dated):
+- Smaller spread width (lower risk/reward)
+- OR push to 6-8 weeks (more time)
+- OR credit put spread below support (if very bullish)
+- Consider LEAPS ONLY if 6+ month conviction
+
+**REQUIRED CALCULATIONS FOR EACH:**
+✓ Exact strikes based on ${price:.2f}
+✓ Specific expiration from available dates
+✓ Spread width in dollars
+✓ Estimated net debit (be realistic)
+✓ Max risk in dollars per contract
+✓ Max profit in dollars per contract
+✓ Breakeven price
+✓ R:R ratio
+✓ % move needed from current price
+✓ Estimated win probability
+
+**RATIONALE MUST INCLUDE:**
+- Why P/C of {put_call} supports this direction
+- Why IV of {iv_pct}% makes this a good entry
+- Why debit spread beats naked call for 2-8 weeks
+- Reference the 5 advantages (lower BE, better R:R, theta protection, defined risk, smaller moves)
+</task>
 
 <output_format>
 Return ONLY valid JSON:
 {{
+  "market_assessment": {{
+    "put_call": "{put_call}",
+    "pc_interpretation": "{pc_signal}",
+    "recommended_direction": "{direction_rec}",
+    "iv_level": "{iv_pct}{'%' if isinstance(iv_pct, (int, float)) else ''}",
+    "iv_interpretation": "{iv_signal}",
+    "primary_strategy_type": "Debit Call Spread | Debit Put Spread"
+  }},
   "strategies": [
     {{
       "rank": 1,
-      "strategy_name": "<name>",
-      "strikes": "<specific strikes>",
-      "expiration": "<exact date from available>",
-      "direction": "bullish|bearish|neutral|volatility",
-      "rationale": "<why this works>",
-      "max_risk": "<amount>",
-      "max_reward": "<amount>",
-      "breakeven": "<price>",
-      "win_probability": "<estimate>",
-      "best_case": "<what needs to happen>",
-      "risk_factors": ["<factor1>", "<factor2>"]
+      "name": "Primary Bullish/Bearish Debit Spread",
+      "strategy_name": "Debit Call Spread",
+      "long_strike": "$XXX",
+      "short_strike": "$XXX",
+      "strikes": "Buy $XXX call / Sell $XXX call",
+      "expiration": "YYYY-MM-DD",
+      "spread_width": "$X.XX",
+      "estimated_net_debit": "$X.XX",
+      "max_risk": "$XXX per contract",
+      "max_profit": "$XXX per contract",
+      "risk_reward_ratio": "X:1",
+      "breakeven": "$XXX.XX",
+      "required_move": "X.X% from current",
+      "win_probability": "XX%",
+      "position_size": "X contracts = $XXX total risk",
+      "rationale": "The {put_call} P/C ratio shows {pc_signal}, and {iv_pct}% IV is {iv_signal}. A debit spread is superior to naked call for this 2-8 week timeframe because: (1) Lower breakeven of $XXX vs $XXX for naked call, (2) Theta protection from short call offsetting decay, (3) Only needs X% move vs Y% for naked call, (4) Better R:R for timeframe, (5) Defined risk without stops.",
+      "best_case": "Stock reaches $XXX+ by expiration for max profit of $XXX per contract",
+      "risk_factors": ["Max profit capped at $XXX", "Needs move above $XXX within X weeks"],
+      "why_not_naked_call": "Naked call would cost $XXX, need $XXX BE, and theta decay would hurt if stock consolidates. Spread is superior for 2-8 weeks."
     }}
   ],
-  "iv_assessment": "overpriced|fair|underpriced",
-  "liquidity_note": "<comment on options liquidity>",
-  "summary": "<2-3 sentences on best approach>"
+  "summary": "Primary recommendation based on {pc_signal} and {iv_signal}"
 }}
 </output_format>"""
 
         try:
             response = self.client.messages.create(
                 model=self.model,
-                max_tokens=2500,
+                max_tokens=3500,
                 temperature=0.3,
                 messages=[{"role": "user", "content": prompt}]
             )

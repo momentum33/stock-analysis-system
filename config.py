@@ -1,4 +1,4 @@
-"""
+﻿"""
 Configuration for Stock Analysis System v4.0
 Updated with secure API key management via .env file
 """
@@ -50,19 +50,22 @@ ANALYSIS_CONFIG = {
     # ------------------------------------------------------------------------
     # SCORING WEIGHTS (Must sum to 1.0 = 100%)
     # ------------------------------------------------------------------------
-    'weights': {
-        # Technical Scores (70%)
-        'momentum_score': 0.20,            # 20% - Trend strength & direction
-        'volume_score': 0.12,              # 12% - Trading activity & accumulation
-        'technical_score': 0.18,           # 18% - Technical indicators & patterns
-        'volatility_score': 0.08,          # 8% - Volatility expansion signals
-        'relative_strength_score': 0.12,   # 12% - Market/sector outperformance
-        'catalyst_score': 0.10,            # 10% - News & event catalysts
-        
+'weights': {
+        # Technical Scores (63%)
+        'momentum_score': 0.18,
+        'volume_score': 0.11,
+        'technical_score': 0.16,
+        'volatility_score': 0.07,
+        'relative_strength_score': 0.12,
+        'catalyst_score': 0.09,
+
         # Fundamental Scores (20%)
-        'fundamental_quality_score': 0.10, # 10% - Business quality (ROIC, FCF, debt)
-        'short_interest_score': 0.05,      # 5% - Short pressure / squeeze potential
-        'growth_score': 0.05,              # 5% - Revenue & earnings growth
+        'fundamental_quality_score': 0.10,
+        'short_interest_score': 0.05,
+        'growth_score': 0.05,
+        
+        # Options Score (7%)
+        'options_score': 0.07,
     },
     
     # Verify weights sum to 1.0
@@ -142,7 +145,7 @@ ANALYSIS_CONFIG = {
     'relative_strength': {
         'comparison_period': 5,      # Days for RS calculation
         'spy_symbol': 'SPY',         # Market benchmark
-        'chop_threshold': 0.01,      # ±1% for choppy market detection
+        'chop_threshold': 0.01,      # Â±1% for choppy market detection
         'chop_atr_period': 20,       # ATR period for chop detection
         'weights': {
             'vs_spy': 0.60,          # 60% - Outperformance vs SPY
@@ -238,7 +241,7 @@ ANALYSIS_CONFIG = {
         'enabled': True,               # Enable options data fetching
         'days_to_expiry_min': 14,     # Minimum days to expiration
         'days_to_expiry_max': 60,     # Maximum days to expiration (2 months)
-        'strike_range_pct': 10,       # % OTM/ITM to fetch (±10% from current price)
+        'strike_range_pct': 10,       # % OTM/ITM to fetch (Â±10% from current price)
         'min_open_interest': 10,      # Minimum open interest to consider
         'min_volume': 5,              # Minimum daily volume to consider
         'quality_thresholds': {
@@ -314,11 +317,12 @@ def validate_config():
     total = sum(weights.values())
     assert abs(total - 1.0) < 0.001, f"Weights must sum to 1.0, got {total}"
     
-    # Verify we have all 9 scores
+    # Verify we have all 10 scores
     required_scores = [
-        'momentum_score', 'volume_score', 'technical_score', 
+        'momentum_score', 'volume_score', 'technical_score',
         'volatility_score', 'relative_strength_score', 'catalyst_score',
-        'fundamental_quality_score', 'short_interest_score', 'growth_score'
+        'fundamental_quality_score', 'short_interest_score', 'growth_score',
+        'options_score'
     ]
     for score in required_scores:
         assert score in weights, f"Missing required score: {score}"
@@ -341,11 +345,11 @@ def validate_config():
     # Check Polygon API key if options enabled
     if config['options']['enabled']:
         if POLYGON_API_KEY == "YOUR_POLYGON_API_KEY_HERE":
-            print("⚠️  Warning: Options enabled but Polygon API key not set")
+            print("âš ï¸  Warning: Options enabled but Polygon API key not set")
             print("   Set POLYGON_API_KEY in your .env file to enable options data")
     
-    print("✅ Configuration validated successfully")
-    print(f"✅ Total scoring dimensions: {len(weights)}")
+    print("âœ… Configuration validated successfully")
+    print(f"âœ… Total scoring dimensions: {len(weights)}")
     print(f"   - Technical scores: 6 (70%)")
     print(f"   - Fundamental scores: 3 (20%)")
     print(f"   - Options data: {'Enabled' if config['options']['enabled'] else 'Disabled'}")
@@ -377,4 +381,26 @@ if __name__ == "__main__":
     try:
         validate_config()
     except AssertionError as e:
-        print(f"❌ Configuration error: {e}")
+        print(f"âŒ Configuration error: {e}")
+
+# Deep Analysis Settings (Optional - requires Claude API key)
+ENABLE_DEEP_ANALYSIS = False  # Set to True to enable by default (or use --deep-analysis flag)
+
+# Output directory for reports
+OUTPUT_DIR = 'output'
+
+# Top N stocks to report
+TOP_N_STOCKS = 20
+
+# Claude API Settings
+CLAUDE_MODEL = 'claude-sonnet-4-20250514'  # Or 'claude-opus-4-20250514' for best quality
+
+# Claude API Settings
+CLAUDE_MODEL = 'claude-opus-4-20250514'  # Best for options strategies
+
+# Options analysis toggle
+ENABLE_OPTIONS_ANALYSIS = True  # Set to False to skip options analysis
+
+# Deep analysis settings
+DEEP_ANALYSIS_TOP_N = 10  # Analyze top N stocks with Claude
+

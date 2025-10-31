@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 Stock Analysis System - Main Script
 Analyzes stocks from your screener and produces ranked reports
@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 from typing import List
 import config
-from fmp_client import FMPClient
+from fmp_client import DataClient
 from analyzer import StockAnalyzer
 from report_generator import ReportGenerator
 
@@ -44,7 +44,7 @@ def main():
     
     # Check for API key
     if config.FMP_API_KEY == "YOUR_FMP_API_KEY_HERE":
-        print("❌ ERROR: Please set your FMP API key in config.py")
+        print("âŒ ERROR: Please set your FMP API key in config.py")
         print("   Edit config.py and replace 'YOUR_FMP_API_KEY_HERE' with your actual API key")
         return
     
@@ -60,7 +60,7 @@ def main():
         # Check for default input file
         default_file = "input_tickers.txt"
         if os.path.exists(default_file):
-            print(f"\n✓ Found {default_file}, using that as input")
+            print(f"\nâœ“ Found {default_file}, using that as input")
             input_file = default_file
         else:
             return
@@ -72,14 +72,14 @@ def main():
     tickers = read_tickers_from_file(input_file)
     
     if not tickers:
-        print("❌ No valid tickers found in input file")
+        print("âŒ No valid tickers found in input file")
         return
     
-    print(f"✓ Found {len(tickers)} tickers to analyze\n")
+    print(f"âœ“ Found {len(tickers)} tickers to analyze\n")
     
     # Initialize components
     print("Initializing FMP API client...")
-    client = FMPClient(config.FMP_API_KEY)
+    client = DataClient()
     
     # Initialize Polygon client if API key is set
     polygon_client = None
@@ -87,19 +87,19 @@ def main():
         print("Initializing Polygon.io API client for options and short interest...")
         from polygon_client import PolygonClient
         polygon_client = PolygonClient(config.POLYGON_API_KEY)
-        print("✓ Polygon.io client initialized (Options & Short Interest enabled)")
+        print("âœ“ Polygon.io client initialized (Options & Short Interest enabled)")
     else:
-        print("⚠️ Polygon API key not set - skipping options and enhanced short interest")
+        print("âš ï¸ Polygon API key not set - skipping options and enhanced short interest")
         print("   Set POLYGON_API_KEY in config.py to enable these features")
     
     print("Initializing stock analyzer...")
-    analyzer = StockAnalyzer(client, polygon_client)
+    analyzer = StockAnalyzer()
     
     print("Fetching market baseline (SPY)...")
     if not analyzer.fetch_market_baseline():
-        print("⚠ Warning: Could not fetch market baseline, relative strength scores will be neutral")
+        print("âš  Warning: Could not fetch market baseline, relative strength scores will be neutral")
     else:
-        print("✓ Market baseline loaded\n")
+        print("âœ“ Market baseline loaded\n")
     
     # Analyze stocks
     print("=" * 80)
@@ -118,7 +118,7 @@ def main():
     print("=" * 80 + "\n")
     
     if not results:
-        print("❌ No stocks passed the analysis filters")
+        print("âŒ No stocks passed the analysis filters")
         print("   Try adjusting filter thresholds in config.py")
         return
     
@@ -141,12 +141,12 @@ def main():
     report_paths = report_gen.generate_all_reports(top_stocks, len(tickers))
     
     print("\n" + "=" * 80)
-    print("✅ ANALYSIS COMPLETE!")
+    print("âœ… ANALYSIS COMPLETE!")
     print("=" * 80)
     print(f"\nReports generated in: {report_gen.output_dir}/")
-    print(f"  • CSV:       {os.path.basename(report_paths['csv'])}")
-    print(f"  • Dashboard: {os.path.basename(report_paths['html'])}")
-    print(f"  • Report:    {os.path.basename(report_paths['pdf'])}")
+    print(f"  â€¢ CSV:       {os.path.basename(report_paths['csv'])}")
+    print(f"  â€¢ Dashboard: {os.path.basename(report_paths['html'])}")
+    print(f"  â€¢ Report:    {os.path.basename(report_paths['pdf'])}")
     print(f"\nCompleted: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     
     # Quick summary
@@ -156,7 +156,7 @@ def main():
     
     if len(top_stocks) > 0:
         top_pick = top_stocks[0]
-        print(f"\n🏆 TOP PICK: {top_pick['symbol']} ({top_pick['company_name']})")
+        print(f"\nðŸ† TOP PICK: {top_pick['symbol']} ({top_pick['company_name']})")
         print(f"   Score: {top_pick['total_score']:.2f}/10")
         print(f"   Price: ${top_pick['price']:.2f} ({top_pick['metrics']['day_change_pct']:+.2f}%)")
         print(f"   Sector: {top_pick['sector']}")
@@ -175,17 +175,17 @@ def main():
         scores.sort(key=lambda x: x[1], reverse=True)
         
         for name, score in scores[:3]:
-            print(f"     • {name}: {score:.1f}/10")
+            print(f"     â€¢ {name}: {score:.1f}/10")
     
-    print("\n✨ Ready for your trading day!")
+    print("\nâœ¨ Ready for your trading day!")
 
 
 if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print("\n\n⚠ Analysis interrupted by user")
+        print("\n\nâš  Analysis interrupted by user")
     except Exception as e:
-        print(f"\n❌ Error: {e}")
+        print(f"\nâŒ Error: {e}")
         import traceback
         traceback.print_exc()

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Stock Analyzer v4.0 - Advanced Scoring System
 Implements sophisticated technical analysis with percentile-based scoring
 """
@@ -52,6 +52,7 @@ class StockAnalyzer:
         scores['fundamental_quality_score'] = self.calculate_fundamental_quality_score(data)
         scores['short_interest_score'] = self.calculate_short_interest_score(data)
         scores['growth_score'] = self.calculate_growth_score(data)
+        scores['options_score'] = self.calculate_options_score(data)
         
         # Calculate composite score
         composite = sum(scores[k] * self.weights[k] for k in scores.keys())
@@ -421,7 +422,7 @@ class StockAnalyzer:
     
     def calculate_short_interest_score(self, data: Dict) -> float:
         """
-        ShortInt = 0.4*(100-DaysToCover) + 0.4*(100-ShortFloat) + 0.2*(100-ΔShort)
+        ShortInt = 0.4*(100-DaysToCover) + 0.4*(100-ShortFloat) + 0.2*(100-Î”Short)
         Higher score = lower short pressure / potential squeeze
         """
         short_data = data.get('short_interest', {})
@@ -708,7 +709,47 @@ class StockAnalyzer:
         
         return False
     
-    # ========================================================================
+
+    def calculate_options_score(self, data: Dict) -> float:
+        """Calculate options sentiment score (0-10)"""
+        options_data = data.get('options_analysis')
+        if not options_data:
+            return 0.0
+        
+        score = 0.0
+        
+        # Put/Call Ratio (4 points)
+        put_call = options_data.get('put_call_ratio')
+        if put_call is not None:
+            if put_call < 0.7: score += 4.0
+            elif put_call < 0.85: score += 3.0
+            elif put_call < 1.0: score += 2.0
+            elif put_call < 1.2: score += 1.5
+            elif put_call < 1.5: score += 1.0
+        
+        # IV (3 points)
+        atm_iv = options_data.get('atm_implied_volatility')
+        if atm_iv is not None:
+            iv_pct = atm_iv * 100 if atm_iv < 1 else atm_iv
+            if 20 <= iv_pct <= 40: score += 3.0
+            elif 40 < iv_pct <= 50: score += 2.0
+            elif 15 <= iv_pct < 20 or 50 < iv_pct <= 60: score += 1.0
+            else: score += 0.5
+        
+        # Volume (2 points)
+        total_vol = options_data.get('total_call_volume', 0) + options_data.get('total_put_volume', 0)
+        if total_vol > 10000: score += 2.0
+        elif total_vol > 5000: score += 1.5
+        elif total_vol > 1000: score += 1.0
+        elif total_vol > 100: score += 0.5
+        
+        # Net Delta (1 point)
+        net_delta = options_data.get('net_delta', 0)
+        if net_delta > 100: score += 1.0
+        elif net_delta > 0: score += 0.7
+        elif net_delta > -100: score += 0.3
+        
+        return min(score, 10.0)    # ========================================================================
     # UTILITY FUNCTIONS
     # ========================================================================
     
@@ -804,8 +845,8 @@ class StockAnalyzer:
 if __name__ == "__main__":
     print("Stock Analyzer v4.0 - Hybrid Technical + Fundamental System")
     print("=" * 70)
-    print("\n✅ Analyzer module loaded successfully")
-    print(f"✅ Configured with {len(config.ANALYSIS_CONFIG['weights'])} scoring dimensions:")
+    print("\nâœ… Analyzer module loaded successfully")
+    print(f"âœ… Configured with {len(config.ANALYSIS_CONFIG['weights'])} scoring dimensions:")
     print("   - Technical: 6 dimensions (70%)")
     print("   - Fundamental: 3 dimensions (20%)")
     print("   - Buffer: 10%")
@@ -814,4 +855,6 @@ if __name__ == "__main__":
     try:
         config.validate_config()
     except Exception as e:
-        print(f"❌ Configuration error: {e}")
+        print(f"âŒ Configuration error: {e}")
+
+
