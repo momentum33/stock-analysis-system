@@ -174,8 +174,6 @@ class ClaudeReportGenerator:
             padding: 25px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: transform 0.2s, box-shadow 0.2s;
-            max-width: 650px;
-        }}
         }}
         
         .stock-card:hover {{
